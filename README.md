@@ -19,11 +19,11 @@ The econometric portion of the dissertation is based on the dataset from the sem
 by La Porta et al. (2008). Their original dataset is included here, and I will be updating variables with additional datasets and work. 
 
 The datasets used to update their variables so far include:
-- World Development Indicators
-- World Governance Indicators
+- World Development Indicators (World Bank)
+- World Governance Indicators (World Bank)
 - Hofstede's Dimensions
 - World Values Survey
-- International Labor Organization's Industrial Relations Data
+- Industrial Relations Data (International Labour Organization)
 
 ### Pre-colonial Institutions and Institutional Strength
 Additionally, I am adding variables for the centralization of pre-colonial societies (*stateness*) and institutional strength (via the instrumental variable
