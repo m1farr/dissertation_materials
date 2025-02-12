@@ -34,3 +34,21 @@ privo_avg <- privo |>
 
 updated_privo <- left_join(table_01_countries, privo_avg)
 write_xlsx(updated_privo, path = "output/updated_privo.xlsx")  
+
+
+# Interest rate spread ----------------------------------------------------
+
+interest_spread <- read_excel("data/wdi_spread_data.xlsx") |> 
+  clean_names() |> 
+  select(country_name, x1999:x2023) |> 
+  rename(country = country_name) |> 
+  mutate(across(everything(), ~ na_if(.x, ".."))) |> 
+  mutate(across(x1999:x2023, ~ as.numeric(.x))) |> 
+  rowwise() |> 
+  mutate(mean_spread = mean(c_across(x1999:x2023), na.rm = TRUE)) |> 
+  ungroup() |> 
+  select(country, mean_spread) |> 
+  filter(!is.na(mean_spread))
+
+updated_spread <- left_join(table_01_countries, interest_spread)
+write_xlsx(updated_spread, path = "output/updated_spread.xlsx") 
