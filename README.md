@@ -8,11 +8,7 @@ institutions.
 
 At the moment, the repo only contains information relating to the econometric 
 portion of the dissertation, but it may expand to include 
-data for my case studies on:
-
-1. Poland
-2. China
-3. Tanzania
+data for my case studies.
 
 ## To Do
 - Fix "Serbia and Montenegro": original paper had 2 as 1 but data now tracks 
