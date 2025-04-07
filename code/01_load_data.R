@@ -42,31 +42,56 @@ country_list <- legal_origins |>
 
 # General data loading ----------------------------------------------------
 
-read_datasets_as_tables()
+# Create list of specific sheets to read
+sheet_map <- list("data", "All Data", "Data", "Results")
 
-# Doing business ---------------------------------------------------------
-doing_business <- read_excel("data/doing_business_corrected.xlsx", sheet = "All Data", skip = 3) |> 
-  clean_names() |> 
-  rename(
-    construction_procedures       = procedures_number_29,
-    construction_score_procedures = score_procedures_number_30,
-    construction_time             = time_days_31,
-    construction_score_time       = score_time_days_32,
-    electricity_procedures        = procedures_number_46,
-    electricity_score_procedures  = score_procedures_number_47,
-    electricity_time              = time_days_48,
-    electricity_score_time        = score_time_days_49,
-    property_procedures           = procedures_number_67,
-    property_score_procedures     = score_procedures_number_68,
-    property_time                 = time_days_69,
-    property_score_time           = score_time_days_70,
-    contract_time                 = time_days_171,
-    contract_score_time           = score_time_days_172
+# Name list to match specific sheet to specific workbook
+names(sheet_map) <- c("boatw_data", "doing_business_data", "wdi_data", "orbis_data") 
+
+# Read and load all files
+read_datasets_as_tables("data", sheet_map)
+
+
+# WDI ---------------------------------------------------------------------
+
+wdi <- wdi_data |> 
+  rename(country = country_name) |> 
+  mutate(across(everything(), ~ na_if(.x, ".."))) |> 
+  rename_with(~ gsub("^x(\\d{4})_yr\\1$", "\\1", .x)) |> 
+  mutate(across(`1974`:`2023`, ~ as.numeric(.x))) |> 
+  select(-series_code) |> 
+  mutate(
+    series_name = str_replace_all(series_name, fixed("Market capitalization of listed domestic companies (% of GDP)"), "mcap"),
+    series_name = str_replace_all(series_name, fixed("Firms per capita"), "firms_pc"),
+    series_name = str_replace_all(series_name, fixed("Domestic credit to private sector (% of GDP)"), "privo"),
+    series_name = str_replace_all(series_name, fixed("Interest rate spread (lending rate minus deposit rate, %)"), "intr_spread"),
+    series_name = str_replace_all(series_name, fixed("GDP per capita, PPP (constant 2021 international $)"), "gdp_pc"),
+    series_name = str_replace_all(series_name, fixed("Labor force participation rate, male (% of male population ages 15-64) (modeled ILO estimate)"), "lfrmle"),
+    series_name = str_replace_all(series_name, fixed("Unemployment, total (% of total labor force) (modeled ILO estimate)"), "unem")
   ) |> 
-  filter(!is.na(economy)) |> 
-  select(economy, db_year, score_protecting_minority_investors_db15_20_methodology,
-         extent_of_disclosure_index_0_10, strength_of_insolvency_framework_index_0_16,
-         score_enforcing_contracts_db17_20_methodology, score_resolving_insolvency,
-         procedures_men_number, procedures_women_number) |> 
-  rename(country = economy) |> 
-  mutate(country = map_chr(country, ~change_names(.x, name_new_db, country_name_changes)))
+  pivot_longer(
+    cols         = `1974`:`2023`,
+    names_to     = "year",
+    names_prefix = "x"
+  ) |> 
+  pivot_wider(
+    names_from  = series_name,
+    values_from = value
+  )
+
+
+# Orbis M&A ---------------------------------------------------------------
+
+complete_orbis <- orbis_data |> 
+  filter(deal_status == "Completed") |> 
+  mutate(across(target_stock_price_prior_to_announcement_usd:offer_price_usd, 
+                ~ na_if(.x, "n.a."))) |> 
+  filter(!is.na(target_stock_price_prior_to_announcement_usd) 
+         & !is.na(offer_price_usd)) |>
+  mutate(offer_price_usd = as.numeric(offer_price_usd),
+         target_stock_price_prior_to_announcement_usd = as.numeric(target_stock_price_prior_to_announcement_usd),
+         final_stake_percent = as.numeric(final_stake_percent)) |> 
+  mutate(bp = 
+           (offer_price_usd - target_stock_price_prior_to_announcement_usd)/
+           target_stock_price_prior_to_announcement_usd * (final_stake_percent/100)) |> 
+  rename(country = target_country)
