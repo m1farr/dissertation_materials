@@ -1,5 +1,6 @@
 # convert all sheets from excel file into tibbles
-read_datasets_as_tables <- function(folder, sheet_mapping) {
+read_datasets_as_tables <- function(folder, sheet_mapping, name_change,
+                                    country_name_changes) {
   
   # Get list of Excel files
   files <- list.files(path = folder, pattern = "\\.xlsx?$", full.names = TRUE)
@@ -59,12 +60,24 @@ read_datasets_as_tables <- function(folder, sheet_mapping) {
 
 # change country names where they don't match between tables
 change_names <- function(name, name_new, n_tbl){
-  if(name %in% (n_tbl |> pull({{ name_new }}))){
-    ret_val <- n_tbl |> filter( {{ name_new }} == name) |> pull(name_old)
+  
+  match <- n_tbl |> 
+    filter(!is.na({{ name_new }}), {{ name_new }} == name) |> 
+    pull(name_wdi)
+  
+  if (!is.na(match) && length(match) > 0) {
+    return(match)
   } else {
-    ret_val <- name
+    return(name)
   }
+  
+  # if(name %in% (n_tbl |> pull({{ name_new }}))){
+  #   ret_val <- n_tbl |> filter( {{ name_new }} == name) |> pull(name_wdi)
+  # } else {
+  #   ret_val <- name
+  # }
 }
+
 
 # Get country-level variable means for WDI variables
 
@@ -96,8 +109,7 @@ get_db <- function(name, var, year, db_data, country_list){
   name_sym <- sym(name)
   
   data <- db_data |> 
-    select(economy, db_year, !!var_sym) |> 
-    rename(country = economy) |> 
+    select(country, db_year, !!var_sym) |> 
     filter(db_year == year) |> 
     select(-db_year) |> 
     rename(!!name_sym := !!var_sym)
