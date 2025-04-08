@@ -45,21 +45,21 @@ updated_cr_2010 <- get_db("cr_2010",
 # Case A Efficiency -------------------------------------------------------
 
 case_a_efficiency <- doing_business_data |> 
-  select(economy, db_year, score_enforcing_contracts_db17_20_methodology, 
+  select(country, db_year, score_enforcing_contracts_db17_20_methodology, 
          score_resolving_insolvency) |> 
-  rename(country = economy,
-         enforce_contracts = score_enforcing_contracts_db17_20_methodology, 
+  rename(enforce_contracts = score_enforcing_contracts_db17_20_methodology, 
          resolve_insolvency = score_resolving_insolvency) |> 
   filter(db_year == 2020) |> 
   mutate(case_a_efficiency = (enforce_contracts + resolve_insolvency)/2) |> 
   select(country, case_a_efficiency)
 
+updated_case_a <- left_join(country_list, case_a_efficiency)
+
 
 # Ln Steps (Starting Business) --------------------------------------------
 
 ln_steps <- doing_business_data |> 
-  select(economy, db_year, procedures_men_number, procedures_women_number) |> 
-  rename(country = economy) |> 
+  select(country, db_year, procedures_men_number, procedures_women_number) |> 
   mutate(
     procedures_men_number   = as.numeric(procedures_men_number),
     procedures_women_number = as.numeric(procedures_women_number)
@@ -69,13 +69,14 @@ ln_steps <- doing_business_data |>
   filter(db_year == 2020) |> 
   select(country, ln_steps)
 
+updated_ln_steps <- left_join(country_list, ln_steps)
+
 
 # Government ownership of banks -------------------------------------------
 
 gbbp_20 <- boatw_data |> 
   select(iso, year, country, soe1_db) |> 
   filter(year == 2020) |> 
-  mutate(country = str_to_title(country)) |> 
   rename(code    = iso,
          gbbp_20 = soe1_db) |> 
   select(-year)
@@ -87,8 +88,7 @@ updated_gbbp <- left_join(country_list, gbbp_20)
 
 oecd_ownership <- oecd_data |> 
   select(country, top_3_investors) |> 
-  mutate(top_3_investors = top_3_investors/100) |> 
-  mutate(country = map_chr(country, ~change_names(.x, name_new_oecd, country_name_changes)))
+  mutate(top_3_investors = top_3_investors/100)
   
 updated_concentr <- left_join(country_list, oecd_ownership)
 
@@ -96,7 +96,6 @@ updated_concentr <- left_join(country_list, oecd_ownership)
 # Median block premia -----------------------------------------------------
 
 bp_med <- complete_orbis |> 
-  mutate(country = map_chr(country, ~change_names(.x, name_new_orbis, country_name_changes))) |> 
   group_by(country) |> 
   mutate(bp_med = median(bp)) |> 
   select(country, bp_med) |> 
@@ -127,22 +126,19 @@ updated_bp_med <- left_join(country_list, updated_bp_med)
 # Military conscription ---------------------------------------------------
 
 conscription_tbl <- m3_data |> 
-  select(year, countryname_standard, com_mil_serv) |> 
+  select(year, country, com_mil_serv) |> 
   mutate(com_mil_serv = na_if(com_mil_serv, "NA")) |> 
   filter(year == 2020) |> 
   filter(!is.na(com_mil_serv)) |> 
-  select(-year) |> 
-  rename(country = countryname_standard)
+  select(-year)
 
 updated_havdft <- left_join(country_list, conscription_tbl)
 
 
 # Corruption (WGI) --------------------------------------------------------
 
-corruption_tbl <- wgi_dataset |> 
-  select(countryname, year, indicator, estimate) |> 
-  rename(country = countryname) |> 
-  mutate(country = map_chr(country, ~change_names(.x, name_new_wgi, country_name_changes))) |> 
+corruption_tbl <- wgi_data |> 
+  select(country, year, indicator, estimate) |> 
   filter(indicator == "cc") |> 
   filter(year >= 2018 & year < 2023) |> 
   select(-indicator) |> 
@@ -184,7 +180,6 @@ temp <- left_join(unofficial_size_orig, unofficial_size_dge) |>
 
 ef_index <- heritage_data |> 
   select(country, property_rights) |> 
-  mutate(country = map_chr(country, ~change_names(.x, name_new_ef, country_name_changes))) |> 
   mutate(across(everything(), ~ na_if(.x, "N/A")))
 
 updated_pty_rights <- left_join(country_list, ef_index)
@@ -192,8 +187,7 @@ updated_pty_rights <- left_join(country_list, ef_index)
 # Cultural Dimensions (Hofstede: pdi, idv, uai, & mas) -------------------------
 
 dimensions_tbl <- hofstede_data |> 
-  select(country:uai) |> 
-  mutate(country = map_chr(country, ~change_names(.x, name_new_hof, country_name_changes)))
+  select(country:uai)
 
 updated_dimensions <- left_join(country_list, dimensions_tbl)
 
@@ -201,10 +195,8 @@ updated_dimensions <- left_join(country_list, dimensions_tbl)
 # Union Density (union_dens)----------------------------------------------------
 
 new_union_dens <- union_dens_pulled |> 
-  select(ref_area_label, time, obs_value) |> 
-  rename(country = ref_area_label) |> 
+  select(country, time, obs_value) |> 
   mutate(obs_value = obs_value/100) |> 
-  mutate(country = map_chr(country, ~change_names(.x, name_new_ud, country_name_changes))) |> 
   filter(time == "2018")
 
 updated_union_dens <- left_join(country_list, new_union_dens) |> 
