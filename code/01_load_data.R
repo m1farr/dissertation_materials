@@ -1,6 +1,18 @@
 source("code/00_dependencies.R")
 source("code/99_functions.R")
 
+# General data loading ----------------------------------------------------
+
+# Create list of specific sheets to read
+sheet_map <- list("data", "All Data", "Data", "Results")
+
+# Name list to match specific sheet to specific workbook
+names(sheet_map) <- c("boatw_data", "doing_business_data", "wdi_data", "orbis_data") 
+
+# Read and load all files
+read_datasets_as_tables("data", sheet_map)
+
+
 # Legal origins data loading. ----------------------------------------------
 
 # Pull legal origins data from original dataset (La Porta et al. 2008)
@@ -34,22 +46,11 @@ legal_origins <- legal_origins |>
         code    = "MNE")
   ) |> 
   filter(country != "Serbia and Montenegro") |> 
-  arrange(code)
+  arrange(code) |> 
+  mutate(country = map_chr(country, ~change_names(.x, name_ecolo, country_name_changes)))
 
 country_list <- legal_origins |> 
   select(country, code)
-
-
-# General data loading ----------------------------------------------------
-
-# Create list of specific sheets to read
-sheet_map <- list("data", "All Data", "Data", "Results")
-
-# Name list to match specific sheet to specific workbook
-names(sheet_map) <- c("boatw_data", "doing_business_data", "wdi_data", "orbis_data") 
-
-# Read and load all files
-read_datasets_as_tables("data", sheet_map)
 
 
 # WDI ---------------------------------------------------------------------
@@ -94,4 +95,40 @@ complete_orbis <- orbis_data |>
   mutate(bp = 
            (offer_price_usd - target_stock_price_prior_to_announcement_usd)/
            target_stock_price_prior_to_announcement_usd * (final_stake_percent/100)) |> 
-  rename(country = target_country)
+  rename(country = target_country) |> 
+  mutate(country = map_chr(country, ~change_names(.x, name_orbis, country_name_changes)))
+
+
+# Country name changes ----------------------------------------------------
+
+boatw_data <- boatw_data |> 
+  mutate(country = str_to_title(country)) |> 
+  mutate(country = map_chr(country, ~change_names(.x, name_boatw, country_name_changes)))
+
+# error
+doing_business_data <- doing_business_data |> 
+  rename(country = economy) |> 
+  mutate(country = map_chr(country, ~change_names(.x, name_db, country_name_changes)))
+
+heritage_data <- heritage_data |> 
+  mutate(country = map_chr(country, ~change_names(.x, name_ef, country_name_changes)))
+
+hofstede_data <- hofstede_data |> 
+  mutate(country = map_chr(country, ~change_names(.x, name_hof, country_name_changes)))
+
+m3_data <- m3_data |> 
+  rename(country = countryname_standard) |> 
+  mutate(country = map_chr(country, ~change_names(.x, name_m3, country_name_changes)))
+
+oecd_data <- oecd_data |> 
+  mutate(country = map_chr(country, ~change_names(.x, name_oecd, country_name_changes)))
+
+union_dens_pulled <- union_dens_pulled |> 
+  rename(country = ref_area_label) |> 
+  mutate(country = map_chr(country, ~change_names(.x, name_ud, country_name_changes)))
+
+wgi_data <- wgi_data |> 
+  rename(country = countryname) |> 
+  mutate(country = map_chr(country, ~change_names(.x, name_wgi, country_name_changes)))
+  
+  
