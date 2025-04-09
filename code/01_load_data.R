@@ -99,6 +99,35 @@ complete_orbis <- orbis_data |>
   mutate(country = map_chr(country, ~change_names(.x, name_orbis, country_name_changes)))
 
 
+# DPI ---------------------------------------------------------------------
+
+dpi_data <- dpi_data |> 
+  clean_names() |> 
+  rename(country = countryname) |> 
+  mutate(country = map_chr(country, ~change_names(.x, name_dpi, country_name_changes))) |> 
+  select(country, year, pr, pluralty, housesys, execrlc, gov1seat, gov1rlc,
+         opp1seat, opp1rlc) |> 
+  mutate(congress_rlc = case_when(
+    gov1seat > opp1seat ~ gov1rlc,
+    gov1seat < opp1seat ~ opp1rlc
+  )) |> 
+  mutate(
+    execrlc = case_when(
+      execrlc == "Right" ~ 1,
+      execrlc == "Center" ~ 2,
+      execrlc == "Left" ~ 3,
+      execrlc == -999 ~ NA_real_
+    )) |> 
+  mutate(
+    congress_rlc = case_when(
+      congress_rlc == "Right" ~ 1,
+      congress_rlc == "Center" ~ 2,
+      congress_rlc == "Left" ~ 3,
+      congress_rlc == -999 ~ NA_real_
+    )
+  )
+
+
 # Country name changes ----------------------------------------------------
 
 boatw_data <- boatw_data |> 
@@ -130,5 +159,8 @@ union_dens_pulled <- union_dens_pulled |>
 wgi_data <- wgi_data |> 
   rename(country = countryname) |> 
   mutate(country = map_chr(country, ~change_names(.x, name_wgi, country_name_changes)))
-  
+
+vdem_data <- vdem_data |> 
+  rename(country = country_name) |> 
+  mutate(country = map_chr(country, ~change_names(.x, name_vdem, country_name_changes)))
   
