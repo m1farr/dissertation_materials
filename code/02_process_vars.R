@@ -5,10 +5,14 @@ source("code/01_load_data.R")
 # Variables include market cap, ln firms per capita, private credit ratio,
 # interest rate spread, and GDP per capita (PPP-adjusted)
 
-updated_spread <- get_wdi_mean("intr_spread", 1999, 2023, wdi, country_list)
+updated_spread <- get_wdi_mean("intr_spread", 1998, 2022, wdi, country_list)
 updated_privo <- get_wdi_mean("privo", 2018, 2022, wdi, country_list)
 updated_mcap <- get_wdi_mean("mcap", 2018, 2022, wdi, country_list)
 updated_firms <- get_wdi_mean("ln_firms_pc", 2018, 2022, wdi, country_list)
+updated_lfrmle <- get_wdi_mean("lfrmle", 2018, 2022, wdi, country_list)
+updated_avg_unem <- get_wdi_mean("unem", 2013, 2022, wdi, country_list)
+
+
 # get_wdi_mean("gdp_pc")
 
 
@@ -201,3 +205,73 @@ new_union_dens <- union_dens_pulled |>
 
 updated_union_dens <- left_join(country_list, new_union_dens) |> 
   select(-time)
+
+# Autocracy  -------------------------------------------------------------------
+
+autocracy_tbl <- vdem_data |> 
+  select(country, country_text_id, year, v2x_regime, v2lgbicam) |> 
+  filter(year >= 1990) |> 
+  mutate(autocracy = case_when(
+    v2x_regime %in% c(0, 1) & v2lgbicam == 0 ~ 0,
+    v2x_regime %in% c(0, 1) & v2lgbicam > 0  ~ 1,
+    v2x_regime >= 2                          ~ 2
+  )) |> 
+  group_by(country) |> 
+  mutate(autocracy_mean = mean(autocracy, na.rm = TRUE)) |> 
+  select(country, autocracy_mean) |> 
+  distinct()
+
+updated_autocracy <- left_join(country_list, autocracy_tbl)
+
+# Left Power --------------------------------------------------------------
+
+left_power <- dpi_data |> 
+  select(country, year, execrlc, congress_rlc) |> 
+  mutate(year = year(year)) |> 
+  filter(year > 1995) |> 
+  mutate(left_power = case_when(
+    execrlc >= 2 & congress_rlc >= 2 ~ 1,
+    execrlc < 2 | congress_rlc < 2 ~ 0,
+    is.na(execrlc) == TRUE & congress_rlc >= 2 ~ NA_real_,
+    execrlc >= 2 & is.na(congress_rlc) == TRUE ~ NA_real_
+  )) |> 
+  group_by(country) |> 
+  summarise(
+    years_with_data = sum(!is.na(left_power)),
+    years_left_power = sum(left_power == 1, na.rm = TRUE),
+    pct_left_power = years_left_power / years_with_data
+  ) |>
+  ungroup() |> 
+  filter(years_with_data == 25) |> 
+  select(country, pct_left_power)
+
+updated_left_power <- left_join(country_list, left_power)
+
+
+# Proportionality ---------------------------------------------------------
+
+proportionality <- dpi_data |> 
+  select(country, year, pr, pluralty, housesys) |> 
+  mutate(
+    pr = case_when(pr == -999 ~ NA_real_,
+                   TRUE ~ pr),
+    pluralty = case_when(pluralty == -999 ~ NA_real_,
+                         TRUE ~ pr),
+    housesys = case_when(
+      housesys == "PR" ~ 0,
+      housesys == "Plurality" ~ 1
+    ),
+    year = year(year)
+  ) |> 
+  mutate(score = 2 + pr - pluralty - housesys) |> 
+  filter(year < 1999) |> 
+  group_by(country) |> 
+  summarise(
+    years_with_data = sum(!is.na(score)),
+    avg_score = mean(score, na.rm = TRUE)
+  ) |> 
+  filter(!is.na(avg_score)) |> 
+  filter(years_with_data > 10) |> 
+  select(country, avg_score)
+
+updated_proportionality <- left_join(country_list, proportionality)

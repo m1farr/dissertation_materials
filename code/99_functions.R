@@ -2,54 +2,62 @@
 read_datasets_as_tables <- function(folder, sheet_mapping, name_change,
                                     country_name_changes) {
   
-  # Get list of Excel files
-  files <- list.files(path = folder, pattern = "\\.xlsx?$", full.names = TRUE)
+  # Get list of files
+  files <- list.files(path = folder, full.names = TRUE)
   
   # Loop through each file
   for (file in files) {
     # Get the base name without extension
-    base_name <- tools::file_path_sans_ext(basename(file))
+    base_name <- file_path_sans_ext(basename(file))
+    file_ext  <- file_ext(file)
     
     # Determine which sheet to read
     sheet_to_read <- sheet_mapping[[base_name]]
     
-    # Read the Excel file (use specified sheet if available, else default to first)
-    if (!is.null(sheet_to_read)) {
-      
-      # Skip unnecessary rows for Doing Business data
-      if(base_name == "doing_business_data"){
-        data <- read_excel(file, sheet = sheet_to_read, skip = 3) |> 
-          clean_names() |> 
-          rename(
-            construction_procedures       = procedures_number_29,
-            construction_score_procedures = score_procedures_number_30,
-            construction_time             = time_days_31,
-            construction_score_time       = score_time_days_32,
-            electricity_procedures        = procedures_number_46,
-            electricity_score_procedures  = score_procedures_number_47,
-            electricity_time              = time_days_48,
-            electricity_score_time        = score_time_days_49,
-            property_procedures           = procedures_number_67,
-            property_score_procedures     = score_procedures_number_68,
-            property_time                 = time_days_69,
-            property_score_time           = score_time_days_70,
-            contract_time                 = time_days_171,
-            contract_score_time           = score_time_days_172
-          )
+    
+    if(file_ext == "xlsx"){
+    
+      # Read the Excel file (use specified sheet if available, else default to first)
+      if (!is.null(sheet_to_read)) {
+        
+        # Skip unnecessary rows for Doing Business data
+        if(base_name == "doing_business_data"){
+          data <- read_excel(file, sheet = sheet_to_read, skip = 3) |> 
+            clean_names() |> 
+            rename(
+              construction_procedures       = procedures_number_29,
+              construction_score_procedures = score_procedures_number_30,
+              construction_time             = time_days_31,
+              construction_score_time       = score_time_days_32,
+              electricity_procedures        = procedures_number_46,
+              electricity_score_procedures  = score_procedures_number_47,
+              electricity_time              = time_days_48,
+              electricity_score_time        = score_time_days_49,
+              property_procedures           = procedures_number_67,
+              property_score_procedures     = score_procedures_number_68,
+              property_time                 = time_days_69,
+              property_score_time           = score_time_days_70,
+              contract_time                 = time_days_171,
+              contract_score_time           = score_time_days_172
+            )
+        } else {
+          data <- read_excel(file, sheet = sheet_to_read) |> 
+            clean_names()
+        }
       } else {
-        data <- read_excel(file, sheet = sheet_to_read) |> 
-          clean_names()
+        
+        # Skip unnecessary rows for Heritage data
+        if(base_name == "heritage_data"){
+          data <- read_excel(file, skip = 1) |> 
+            clean_names()
+        } else {
+          data <- read_excel(file) |> 
+            clean_names()
+        }
       }
-    } else {
-      
-      # Skip unnecessary rows for Heritage data
-      if(base_name == "heritage_data"){
-        data <- read_excel(file, skip = 1) |> 
-          clean_names()
-      } else {
-        data <- read_excel(file) |> 
-          clean_names()
-      }
+    } else if(file_ext == "csv") {
+      data <- read.csv(file) |> 
+        clean_names()
     }
     
     # Assign to variable in global environment
@@ -70,12 +78,6 @@ change_names <- function(name, name_new, n_tbl){
   } else {
     return(name)
   }
-  
-  # if(name %in% (n_tbl |> pull({{ name_new }}))){
-  #   ret_val <- n_tbl |> filter( {{ name_new }} == name) |> pull(name_wdi)
-  # } else {
-  #   ret_val <- name
-  # }
 }
 
 
