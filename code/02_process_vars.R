@@ -76,6 +76,18 @@ ln_steps <- doing_business_data |>
 updated_ln_steps <- left_join(country_list, ln_steps)
 
 
+# Government ownership of press -------------------------------------------
+
+press_share_state <- vindoc_data |> 
+  select(country, country_text_id, year, v2medstateprint_ord) |> 
+  filter(year == 2020) |> 
+  rename(country = country_name,
+         press_state = v2medstateprint_ord) |> 
+  select(country, press_state)
+
+updated_press_state <- left_join(country_list, press_share_state)
+
+
 # Government ownership of banks -------------------------------------------
 
 gbbp_20 <- boatw_data |> 
@@ -170,14 +182,14 @@ unofficial_size_mimic <- read_excel("data/informal_economy_database.xlsx", sheet
   rename(country = economy,
          mimic_2000 = x2000)
 
-unofficial_size_orig <- read_excel("data/legal_origins_data.xlsx", sheet = "Table 2") |> 
-  select(country, code, employmentunofficial) |> 
-  filter(row_number() < 160) |> 
-  mutate(across(everything(), ~ na_if(.x, "."))) |> 
-  filter(!is.na(employmentunofficial))
 
-temp <- left_join(unofficial_size_orig, unofficial_size_dge) |> 
-  left_join(unofficial_size_mimic)
+# Tenure and Case law -------------------------------------------------------
+
+updated_case_law <- left_join(country_list, higher_court_data) |> 
+  select(-tenure)
+
+updated_tenure <- left_join(country_list, higher_court_data) |> 
+  select(-case_law)
 
 
 # Property rights ---------------------------------------------------------
@@ -275,3 +287,33 @@ proportionality <- dpi_data |>
   select(country, avg_score)
 
 updated_proportionality <- left_join(country_list, proportionality)
+
+# WVS ---------------------------------------------------------------------
+
+# variables: obedience, independence, family, trust
+# Var Q1: get % of respondents who agree that family life is v important
+# Var Q8: get % of respondents who agree that child independence is important
+# Var Q17: get % of respondents who agree that child obedience is important
+# Var Q57: get % of respondents who agree that strangers (people) can
+# generally be trusted
+
+wvs_data <- wvs_wave_7_data |> 
+  clean_names() |> 
+  select(b_country_alpha, q1, q8, q17, q57) |> 
+  rename(
+    code = b_country_alpha,
+    family = q1,
+    independence = q8,
+    obedience = q17,
+    trust = q57
+  ) |> 
+  group_by(code) |> 
+  summarise(
+    family = (sum(family == 1) / n()),
+    independence = (sum(independence == 1) / n()),
+    obedience = (sum(obedience == 1) / n()),
+    trust = (sum(trust == 1) / n())
+  ) |> 
+  mutate(code = str_replace_all(code, "ROU", "ROM"))
+
+updated_wvs <- left_join(country_list, wvs_data)
