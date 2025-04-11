@@ -142,6 +142,9 @@ doing_business_data <- doing_business_data |>
 heritage_data <- heritage_data |> 
   mutate(country = map_chr(country, ~change_names(.x, name_ef, country_name_changes)))
 
+higher_court_data <- higher_court_data |> 
+  mutate(country = map_chr(country, ~change_names(.x, name_hc, country_name_changes)))
+
 hofstede_data <- hofstede_data |> 
   mutate(country = map_chr(country, ~change_names(.x, name_hof, country_name_changes)))
 
@@ -163,4 +166,8 @@ wgi_data <- wgi_data |>
 vdem_data <- vdem_data |> 
   rename(country = country_name) |> 
   mutate(country = map_chr(country, ~change_names(.x, name_vdem, country_name_changes)))
+
+vindoc_data <- vindoc_data |> 
+  rename(country = country_name) |> 
+  mutate(country = map_chr(country, ~change_names(.x, name_vindoc, country_name_changes)))
   
