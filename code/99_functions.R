@@ -81,6 +81,22 @@ change_names <- function(name, name_new, n_tbl){
 }
 
 
+# Read and combine all of the sheets in an Excel file into one table
+
+combine_excel_sheets <- function(file_path) {
+  sheet_names <- excel_sheets(file_path)
+  sheet_names <- setdiff(sheet_names, "Read me")
+  
+  combined_data <- map_dfr(sheet_names, ~ {
+    read_excel(file_path, sheet = .x) |> 
+      clean_names() |> 
+      select(economy, x2017) |> 
+      mutate(sheet = .x)
+  })
+  
+  return(combined_data)
+}
+
 # Get country-level variable means for WDI variables
 
 get_wdi_mean <- function(name, start_year, end_year, wdi_data, country_list) {
