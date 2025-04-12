@@ -76,6 +76,24 @@ ln_steps <- doing_business_data |>
 updated_ln_steps <- left_join(country_list, ln_steps)
 
 
+# Index of Labor ----------------------------------------------------------
+
+index_labor <- oecd_epl_data |> 
+  select(country, version, time_period, obs_value, measure_2) |> 
+  filter(version == "VERSION4" & time_period == 2019) |> 
+  pivot_wider(
+    names_from = measure_2,
+    values_from = obs_value
+  ) |> 
+  clean_names() |> 
+  mutate(across(collective_dismissals:temporary_contracts, ~ as.numeric(.x))) |> 
+  mutate(index_labor = rowMeans(across(collective_dismissals:temporary_contracts), na.rm = TRUE)) |> 
+  select(country, index_labor)
+
+updated_index_labor <- left_join(country_list, index_labor) |> 
+  filter(!is.na(index_labor))
+
+
 # Government ownership of press -------------------------------------------
 
 press_share_state <- vindoc_data |> 
@@ -170,18 +188,36 @@ updated_corruption <- left_join(country_list, corruption_tbl)
 
 # Unofficial Employment ---------------------------------------------------
 
-unofficial_size_dge <- read_excel("data/informal_economy_database.xlsx", sheet = "DGE_p") |> 
+unof_emp <- unofficial_economy |> 
+  pivot_wider(
+    names_from = sheet,
+    values_from = x2017
+  ) |> 
   clean_names() |> 
-  select(economy, x2000) |> 
-  rename(country = economy,
-         dge_2000 = x2000)
+  mutate(
+    employmentunofficial = rowMeans(across(dge_p:wvs), na.rm = TRUE),
+    count = rowSums(!is.na(across(dge_p:wvs)))
+  ) |> 
+  select(country, employmentunofficial, count) |> 
+  filter(!is.na(employmentunofficial)) |> 
+  filter(count > 2)
 
-unofficial_size_mimic <- read_excel("data/informal_economy_database.xlsx", sheet = "MIMIC_p") |> 
-  clean_names() |> 
-  select(economy, x2000) |> 
-  rename(country = economy,
-         mimic_2000 = x2000)
+updated_unof_emp <- left_join(country_list, unof_emp) |> 
+  select(-count)
 
+
+
+# Rate of male unemployment, 20-24 ----------------------------------------
+
+rat_mal2024 <- ilostat_data |> 
+  select(country, time, obs_value) |> 
+  filter(time >= 2013 & time <= 2022) |> 
+  group_by(country) |> 
+  mutate(rat_mal2024 = mean(obs_value)) |> 
+  select(country, rat_mal2024) |> 
+  distinct()
+
+updated_rat_mal2024 <- left_join(country_list, rat_mal2024)
 
 # Tenure and Case law -------------------------------------------------------
 
