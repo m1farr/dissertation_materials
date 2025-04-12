@@ -128,6 +128,13 @@ dpi_data <- dpi_data |>
   )
 
 
+# Informal Economy Dataset ------------------------------------------------
+
+unofficial_economy <- combine_excel_sheets("data/informal_economy_data.xlsx") |> 
+  rename(country = economy) |> 
+  mutate(country = map_chr(country, ~change_names(.x, name_inf, country_name_changes)))
+
+
 # Country name changes ----------------------------------------------------
 
 boatw_data <- boatw_data |> 
@@ -148,12 +155,20 @@ higher_court_data <- higher_court_data |>
 hofstede_data <- hofstede_data |> 
   mutate(country = map_chr(country, ~change_names(.x, name_hof, country_name_changes)))
 
+ilostat_data <- ilostat_data |> 
+  rename(country = ref_area_label) |> 
+  mutate(country = map_chr(country, ~change_names(.x, name_ilostat, country_name_changes)))
+
 m3_data <- m3_data |> 
   rename(country = countryname_standard) |> 
   mutate(country = map_chr(country, ~change_names(.x, name_m3, country_name_changes)))
 
 oecd_data <- oecd_data |> 
   mutate(country = map_chr(country, ~change_names(.x, name_oecd, country_name_changes)))
+
+oecd_epl_data <- oecd_epl_data |> 
+  rename(country = reference_area) |> 
+  mutate(country = map_chr(country, ~change_names(.x, name_epl, country_name_changes)))
 
 union_dens_pulled <- union_dens_pulled |> 
   rename(country = ref_area_label) |> 
