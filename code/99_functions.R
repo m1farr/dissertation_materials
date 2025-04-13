@@ -16,7 +16,7 @@ read_datasets_as_tables <- function(folder, sheet_mapping, name_change,
     
     
     if(file_ext == "xlsx"){
-    
+      
       # Read the Excel file (use specified sheet if available, else default to first)
       if (!is.null(sheet_to_read)) {
         
@@ -40,6 +40,9 @@ read_datasets_as_tables <- function(folder, sheet_mapping, name_change,
               contract_time                 = time_days_171,
               contract_score_time           = score_time_days_172
             )
+        } else if (base_name == "wjp_data") {
+          data <- read_excel(file, sheet = sheet_to_read, col_names = FALSE) |> 
+            filter(!is.na(`...1`))
         } else {
           data <- read_excel(file, sheet = sheet_to_read) |> 
             clean_names()
@@ -48,7 +51,7 @@ read_datasets_as_tables <- function(folder, sheet_mapping, name_change,
         
         # Skip unnecessary rows for Heritage data
         if(base_name == "heritage_data"){
-          data <- read_excel(file, skip = 1) |> 
+          data <- read_excel(file, skip = 4) |> 
             clean_names()
         } else {
           data <- read_excel(file) |> 
@@ -99,7 +102,7 @@ combine_excel_sheets <- function(file_path) {
 
 # Get country-level variable means for WDI variables
 
-get_wdi_mean <- function(name, start_year, end_year, wdi_data, country_list) {
+get_wdi_mean <- function(name, start_year, end_year, wdi, country_list) {
   # Create a symbol from the column name string
   var_sym <- sym(name)
   
@@ -107,12 +110,13 @@ get_wdi_mean <- function(name, start_year, end_year, wdi_data, country_list) {
   updated_name <- paste0("mean_", name)
   
   # Calculate the mean
-  data <- wdi_data |> 
+  data <- wdi |> 
     filter(year >= start_year & year <= end_year) |> 
     group_by(country, country_code) |> 
     rename(code = country_code) |> 
     summarise(mean = mean(!!var_sym, na.rm = TRUE), .groups = "drop") |> 
-    mutate_all(~ifelse(is.nan(.), NA, .))
+    mutate_all(~ifelse(is.nan(.), NA, .)) |> 
+    rename(!!var_sym := mean)
   
   data <- left_join(country_list, data)
   

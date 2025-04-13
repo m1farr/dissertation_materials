@@ -4,10 +4,11 @@ source("code/99_functions.R")
 # General data loading ----------------------------------------------------
 
 # Create list of specific sheets to read
-sheet_map <- list("data", "All Data", "Data", "Results")
+sheet_map <- list("data", "All Data", "Data", "Results", "WJP ROL Index 2020 Scores")
 
 # Name list to match specific sheet to specific workbook
-names(sheet_map) <- c("boatw_data", "doing_business_data", "wdi_data", "orbis_data") 
+names(sheet_map) <- c("boatw_data", "doing_business_data", "wdi_data", 
+                      "orbis_data", "wjp_data") 
 
 # Read and load all files
 read_datasets_as_tables("data", sheet_map)
@@ -141,7 +142,6 @@ boatw_data <- boatw_data |>
   mutate(country = str_to_title(country)) |> 
   mutate(country = map_chr(country, ~change_names(.x, name_boatw, country_name_changes)))
 
-# error
 doing_business_data <- doing_business_data |> 
   rename(country = economy) |> 
   mutate(country = map_chr(country, ~change_names(.x, name_db, country_name_changes)))
@@ -155,7 +155,7 @@ higher_court_data <- higher_court_data |>
 hofstede_data <- hofstede_data |> 
   mutate(country = map_chr(country, ~change_names(.x, name_hof, country_name_changes)))
 
-ilostat_data <- ilostat_data |> 
+ilostat_male_data <- ilostat_male_data |> 
   rename(country = ref_area_label) |> 
   mutate(country = map_chr(country, ~change_names(.x, name_ilostat, country_name_changes)))
 
@@ -163,20 +163,25 @@ m3_data <- m3_data |>
   rename(country = countryname_standard) |> 
   mutate(country = map_chr(country, ~change_names(.x, name_m3, country_name_changes)))
 
-oecd_data <- oecd_data |> 
-  mutate(country = map_chr(country, ~change_names(.x, name_oecd, country_name_changes)))
+oecd_oc_data <- oecd_oc_data |> 
+  mutate(country = map_chr(country, ~change_names(.x, name_oc, country_name_changes)))
 
 oecd_epl_data <- oecd_epl_data |> 
   rename(country = reference_area) |> 
   mutate(country = map_chr(country, ~change_names(.x, name_epl, country_name_changes)))
 
-union_dens_pulled <- union_dens_pulled |> 
+ilostat_union_data <- ilostat_union_data |> 
   rename(country = ref_area_label) |> 
-  mutate(country = map_chr(country, ~change_names(.x, name_ud, country_name_changes)))
+  mutate(country = map_chr(country, ~change_names(.x, name_ilostat, country_name_changes)))
 
 wgi_data <- wgi_data |> 
   rename(country = countryname) |> 
   mutate(country = map_chr(country, ~change_names(.x, name_wgi, country_name_changes)))
+
+wjp_clean <- as_tibble(t(wjp_data)) |> 
+  row_to_names(row_number = 1) |>
+  clean_names() |> 
+  mutate(country = map_chr(country, ~change_names(.x, name_wjp, country_name_changes)))
 
 vdem_data <- vdem_data |> 
   rename(country = country_name) |> 
