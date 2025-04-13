@@ -8,9 +8,12 @@ source("code/01_load_data.R")
 updated_spread <- get_wdi_mean("intr_spread", 1998, 2022, wdi, country_list)
 updated_privo <- get_wdi_mean("privo", 2018, 2022, wdi, country_list)
 updated_mcap <- get_wdi_mean("mcap", 2018, 2022, wdi, country_list)
-updated_firms <- get_wdi_mean("ln_firms_pc", 2018, 2022, wdi, country_list)
 updated_lfrmle <- get_wdi_mean("lfrmle", 2018, 2022, wdi, country_list)
 updated_avg_unem <- get_wdi_mean("unem", 2013, 2022, wdi, country_list)
+updated_firms <- get_wdi_mean("firms_pc", 2018, 2022, wdi, country_list) |> 
+  mutate(ln_firms_pc = log(firms_pc)) |> 
+  select(-firms_pc)
+
 
 
 # get_wdi_mean("gdp_pc")
@@ -42,6 +45,24 @@ updated_cr_2020 <- get_db("cr_2020",
 updated_cr_2010 <- get_db("cr_2010",
                           "strength_of_insolvency_framework_index_0_16",
                           2010,
+                          doing_business_data,
+                          country_list)
+
+updated_formalism <- get_db("formalism_c",
+                            "quality_of_judicial_processes_index_0_18_db17_20_methodology",
+                            2020,
+                            doing_business_data,
+                            country_list)
+
+updated_time <- get_db("time_c",
+                       "contract_time",
+                       2020,
+                       doing_business_data,
+                       country_list)
+
+updated_enforce <- get_db("enforce",
+                          "score_enforcing_contracts_db17_20_methodology",
+                          2020,
                           doing_business_data,
                           country_list)
 
@@ -90,8 +111,7 @@ index_labor <- oecd_epl_data |>
   mutate(index_labor = rowMeans(across(collective_dismissals:temporary_contracts), na.rm = TRUE)) |> 
   select(country, index_labor)
 
-updated_index_labor <- left_join(country_list, index_labor) |> 
-  filter(!is.na(index_labor))
+updated_index_labor <- left_join(country_list, index_labor)
 
 
 # Government ownership of press -------------------------------------------
@@ -99,8 +119,7 @@ updated_index_labor <- left_join(country_list, index_labor) |>
 press_share_state <- vindoc_data |> 
   select(country, country_text_id, year, v2medstateprint_ord) |> 
   filter(year == 2020) |> 
-  rename(country = country_name,
-         press_state = v2medstateprint_ord) |> 
+  rename(press_state = v2medstateprint_ord) |> 
   select(country, press_state)
 
 updated_press_state <- left_join(country_list, press_share_state)
@@ -114,16 +133,16 @@ gbbp_20 <- boatw_data |>
   rename(code    = iso,
          gbbp_20 = soe1_db) |> 
   select(-year)
-  
+
 updated_gbbp <- left_join(country_list, gbbp_20)
 
 
 # Ownership concentration -------------------------------------------------
 
-oecd_ownership <- oecd_data |> 
+oecd_ownership <- oecd_oc_data |> 
   select(country, top_3_investors) |> 
   mutate(top_3_investors = top_3_investors/100)
-  
+
 updated_concentr <- left_join(country_list, oecd_ownership)
 
 
@@ -174,7 +193,7 @@ updated_havdft <- left_join(country_list, conscription_tbl)
 corruption_tbl <- wgi_data |> 
   select(country, year, indicator, estimate) |> 
   filter(indicator == "cc") |> 
-  filter(year >= 2018 & year < 2023) |> 
+  filter(year >= 2018 & year <= 2022) |> 
   select(-indicator) |> 
   rename(corruption = estimate) |> 
   group_by(country) |> 
@@ -209,7 +228,7 @@ updated_unof_emp <- left_join(country_list, unof_emp) |>
 
 # Rate of male unemployment, 20-24 ----------------------------------------
 
-rat_mal2024 <- ilostat_data |> 
+rat_mal2024 <- ilostat_male_data |> 
   select(country, time, obs_value) |> 
   filter(time >= 2013 & time <= 2022) |> 
   group_by(country) |> 
@@ -225,7 +244,7 @@ updated_case_law <- left_join(country_list, higher_court_data) |>
   select(-tenure)
 
 updated_tenure <- left_join(country_list, higher_court_data) |> 
-  select(-case_law)
+  select(-caselaw)
 
 
 # Property rights ---------------------------------------------------------
@@ -235,6 +254,14 @@ ef_index <- heritage_data |>
   mutate(across(everything(), ~ na_if(.x, "N/A")))
 
 updated_pty_rights <- left_join(country_list, ef_index)
+
+# Judicial independence ---------------------------------------------------
+
+wjp_clean <- wjp_clean |> 
+  select(country, x1_2_government_powers_are_effectively_limited_by_the_judiciary) |> 
+  rename(judindependence = x1_2_government_powers_are_effectively_limited_by_the_judiciary)
+
+updated_judindependence <- left_join(country_list, wjp_clean)
 
 # Cultural Dimensions (Hofstede: pdi, idv, uai, & mas) -------------------------
 
@@ -246,7 +273,7 @@ updated_dimensions <- left_join(country_list, dimensions_tbl)
 
 # Union Density (union_dens)----------------------------------------------------
 
-new_union_dens <- union_dens_pulled |> 
+new_union_dens <- ilostat_union_data |> 
   select(country, time, obs_value) |> 
   mutate(obs_value = obs_value/100) |> 
   filter(time == "2018")
@@ -258,7 +285,7 @@ updated_union_dens <- left_join(country_list, new_union_dens) |>
 
 autocracy_tbl <- vdem_data |> 
   select(country, country_text_id, year, v2x_regime, v2lgbicam) |> 
-  filter(year >= 1990) |> 
+  filter(year >= 1990 & year <= 2020) |> 
   mutate(autocracy = case_when(
     v2x_regime %in% c(0, 1) & v2lgbicam == 0 ~ 0,
     v2x_regime %in% c(0, 1) & v2lgbicam > 0  ~ 1,
@@ -312,7 +339,7 @@ proportionality <- dpi_data |>
     year = year(year)
   ) |> 
   mutate(score = 2 + pr - pluralty - housesys) |> 
-  filter(year < 1999) |> 
+  filter(year > 1995) |> 
   group_by(country) |> 
   summarise(
     years_with_data = sum(!is.na(score)),
@@ -323,6 +350,31 @@ proportionality <- dpi_data |>
   select(country, avg_score)
 
 updated_proportionality <- left_join(country_list, proportionality)
+
+# Catholic ----------------------------------------------------------------
+
+# Follows the methodology of Djankov et al 2007, which only considers 9 religious
+# groups: Atheist (here, any non-religious), Buddhist, Catholic, Hindu,
+# Indigenous, Jewish, Muslim, Orthodox Christian, and Protestant
+
+rcs_pop <- rcs_data |> 
+  filter(year == 2015) |> 
+  select(nrepc, budpc, catpc, hinpc, indpc, jewpc, muspc, ortpc, prtpc)
+
+catholic <- rcs_data |> 
+  filter(year == 2015) |> 
+  select(iso3, year, nrepc, budpc, catpc, hinpc, indpc, jewpc, muspc, ortpc, prtpc) |> 
+  mutate(max_column = apply(rcs_pop, 1, function(row) colnames(rcs_pop)[which.max(row)])) |> 
+  mutate(catholic = case_when(
+    max_column == "catpc" ~ 1,
+    .default = 0
+  )) |> 
+  select(iso3, catholic) |> 
+  rename(code = iso3) |> 
+  mutate(code = str_replace_all(code, "ROU", "ROM"),
+         code = str_replace_all(code, "COD", "ZAR"))
+
+updated_catholic <- left_join(country_list, catholic)
 
 # WVS ---------------------------------------------------------------------
 
@@ -353,3 +405,28 @@ wvs_data <- wvs_wave_7_data |>
   mutate(code = str_replace_all(code, "ROU", "ROM"))
 
 updated_wvs <- left_join(country_list, wvs_data)
+
+
+# GDP ---------------------------------------------------------------------
+
+gdp_tbl <- wdi |> 
+  select(country, year, gdp_pc) |> 
+  pivot_wider(
+    names_from = year,
+    values_from = gdp_pc
+  ) |> 
+  select(country, `1990`:`2023`) |> 
+  rename_with(
+    .fn = ~ paste0("gdp_", .),
+    .cols = matches("^\\d{4}$")
+  ) |> 
+  mutate(gdp_avg_9020 = rowMeans(across(gdp_1990:gdp_2020)),
+         gdp_avg_9822 = rowMeans(across(gdp_1998:gdp_2022)),
+         gdp_avg_1322 = rowMeans(across(gdp_2013:gdp_2022)),
+         gdp_avg_1722 = rowMeans(across(gdp_2017:gdp_2022)),
+         gdp_avg_1822 = rowMeans(across(gdp_2018:gdp_2022))
+  ) |> 
+  mutate(across(starts_with("gdp"), log)) |> 
+  rename_with(~ paste0("ln_", .), starts_with("gdp"))
+
+updated_gdp <- left_join(country_list, gdp_tbl)
