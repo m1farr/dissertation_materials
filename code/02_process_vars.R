@@ -141,7 +141,8 @@ updated_gbbp <- left_join(country_list, gbbp_20)
 
 oecd_ownership <- oecd_oc_data |> 
   select(country, top_3_investors) |> 
-  mutate(top_3_investors = top_3_investors/100)
+  mutate(top_3_investors = top_3_investors/100) |> 
+  rename(concentr = top_3_investors)
 
 updated_concentr <- left_join(country_list, oecd_ownership)
 
@@ -183,7 +184,8 @@ conscription_tbl <- m3_data |>
   mutate(com_mil_serv = na_if(com_mil_serv, "NA")) |> 
   filter(year == 2020) |> 
   filter(!is.na(com_mil_serv)) |> 
-  select(-year)
+  select(-year) |> 
+  rename(havdft = com_mil_serv)
 
 updated_havdft <- left_join(country_list, conscription_tbl)
 
@@ -198,11 +200,11 @@ corruption_tbl <- wgi_data |>
   rename(corruption = estimate) |> 
   group_by(country) |> 
   mutate(corruption = as.numeric(corruption)) |> 
-  mutate(corruption_avg = mean(corruption)) |> 
-  select(country, corruption_avg) |> 
+  mutate(corrupt = mean(corruption)) |> 
+  select(country, corrupt) |> 
   distinct()
 
-updated_corruption <- left_join(country_list, corruption_tbl)
+updated_corrupt <- left_join(country_list, corruption_tbl)
 
 
 # Unofficial Employment ---------------------------------------------------
@@ -276,7 +278,8 @@ updated_dimensions <- left_join(country_list, dimensions_tbl)
 new_union_dens <- ilostat_union_data |> 
   select(country, time, obs_value) |> 
   mutate(obs_value = obs_value/100) |> 
-  filter(time == "2018")
+  filter(time == "2018") |> 
+  rename(union_dens = obs_value)
 
 updated_union_dens <- left_join(country_list, new_union_dens) |> 
   select(-time)
@@ -287,13 +290,14 @@ autocracy_tbl <- vdem_data |>
   select(country, country_text_id, year, v2x_regime, v2lgbicam) |> 
   filter(year >= 1990 & year <= 2020) |> 
   mutate(autocracy = case_when(
-    v2x_regime %in% c(0, 1) & v2lgbicam == 0 ~ 0,
+    v2x_regime %in% c(0, 1) & v2lgbicam == 0 ~ 2,
     v2x_regime %in% c(0, 1) & v2lgbicam > 0  ~ 1,
-    v2x_regime >= 2                          ~ 2
+    v2x_regime >= 2                          ~ 0
   )) |> 
   group_by(country) |> 
   mutate(autocracy_mean = mean(autocracy, na.rm = TRUE)) |> 
   select(country, autocracy_mean) |> 
+  rename(autocracy = autocracy_mean) |> 
   distinct()
 
 updated_autocracy <- left_join(country_list, autocracy_tbl)
@@ -318,7 +322,8 @@ left_power <- dpi_data |>
   ) |>
   ungroup() |> 
   filter(years_with_data == 25) |> 
-  select(country, pct_left_power)
+  select(country, pct_left_power) |> 
+  rename(left_power = pct_left_power)
 
 updated_left_power <- left_join(country_list, left_power)
 
@@ -347,7 +352,8 @@ proportionality <- dpi_data |>
   ) |> 
   filter(!is.na(avg_score)) |> 
   filter(years_with_data > 10) |> 
-  select(country, avg_score)
+  select(country, avg_score) |> 
+  rename(proportionality = avg_score)
 
 updated_proportionality <- left_join(country_list, proportionality)
 
@@ -358,11 +364,11 @@ updated_proportionality <- left_join(country_list, proportionality)
 # Indigenous, Jewish, Muslim, Orthodox Christian, and Protestant
 
 rcs_pop <- rcs_data |> 
-  filter(year == 2015) |> 
+  filter(year == 2010) |> 
   select(nrepc, budpc, catpc, hinpc, indpc, jewpc, muspc, ortpc, prtpc)
 
 catholic <- rcs_data |> 
-  filter(year == 2015) |> 
+  filter(year == 2010) |> 
   select(iso3, year, nrepc, budpc, catpc, hinpc, indpc, jewpc, muspc, ortpc, prtpc) |> 
   mutate(max_column = apply(rcs_pop, 1, function(row) colnames(rcs_pop)[which.max(row)])) |> 
   mutate(catholic = case_when(
