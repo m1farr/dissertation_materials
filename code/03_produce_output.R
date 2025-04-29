@@ -350,3 +350,72 @@ tables_list <- list(
 
 # Write to Excel with each element as a sheet
 write_xlsx(tables_list, path = "output/combined_tables.xlsx")
+
+
+# Produce graphs ----------------------------------------------------------
+
+# stock market cap to GDP ratio
+
+poland_ts_data <- wdi |> 
+  select(country, year, mcap) |> 
+  filter(year >= 2000 & country == "Poland") |> 
+  rename(legal_origin = country,
+         avg_mcap = mcap)
+
+ts_data <- wdi |> 
+  select(country, year, mcap) |> 
+  filter(year >= 2000) |> 
+  left_join(legal_origins) |> 
+  group_by(legal_origin, year) |> 
+  summarise(avg_mcap = mean(mcap, na.rm = TRUE)) |> 
+  filter(legal_origin %in% c("English", "French", "German", "Scandinavian")) |> 
+  ungroup() |> 
+  bind_rows(poland_ts_data) |> 
+  mutate(year = as.numeric(year))
+
+mcap_ts <- ggplot(ts_data, aes(x = year, y = avg_mcap, color = legal_origin, group = legal_origin)) +
+  geom_line() +
+  labs(
+    title = "Average Market Cap Over Time by Legal Origin",
+    x = "Year",
+    y = "Average Market Cap",
+    color = "Key"
+  ) +
+  theme_minimal() +
+  theme(
+    text = element_text(family = "Times New Roman")
+  ) + 
+  scale_x_continuous(
+    breaks = seq(2000, 2022, by = 5)
+  )
+
+ggsave("output/mcap_ts.png", plot = mcap_ts, width = 8, height = 6)
+
+
+# Poland/civil law comparative table --------------------------------------
+
+summary_tbl <- table_05_data |> 
+  mutate(ln_gdp_growth = ln_gdp_2020 / ln_gdp_2000) |> 
+  select(country:legal_origin, ln_gdp_growth)
+
+pol_summary <- summary_tbl |> 
+  filter(country == "Poland") |> 
+  select(-legal_origin) |> 
+  rename(legal_origin = country) |> 
+  select(-code)
+
+origins_summary <- summary_tbl |> 
+  group_by(legal_origin) |> 
+  summarise(
+    across(where(is.numeric), ~ mean(.x, na.rm = TRUE), .names = "{.col}")
+  )
+
+final_tbl <- bind_rows(pol_summary, origins_summary) |> 
+  t() |> 
+  as.data.frame() |> 
+  rownames_to_column() |> 
+  row_to_names(row_number = 1) |> 
+  rename(indicator = legal_origin) |> 
+  filter(!is.na(Poland))
+
+write_xlsx(final_tbl, path = "output/comparative_table.xlsx")
